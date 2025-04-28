@@ -1,33 +1,20 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99
-LDFLAGS = -lm
+LDFLAGS = -lSDL2
 
-# List of source files
-SRCS = game_menu.c snake.c pacman.c
+# Main targets
+all: snake game_menu
 
-# Generate object file names
-OBJS = $(SRCS:.c=.o)
+# Snake game
+snake: snake.c
+	$(CC) $(CFLAGS) -o snake snake.c $(LDFLAGS)
 
-# Main target
-all: game_menu
-
-# Compile the main game menu
-game_menu: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-
-# Compile individual games for testing
-snake_standalone: snake.c
-	$(CC) $(CFLAGS) -DSNAKE_STANDALONE -o $@ $< $(LDFLAGS)
-
-pacman_standalone: pacman.c
-	$(CC) $(CFLAGS) -DPACMAN_STANDALONE -o $@ $< $(LDFLAGS)
-
-# Pattern rule for object files
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+# Game menu
+game_menu: game_menu.c
+	$(CC) $(CFLAGS) -o game_menu game_menu.c $(LDFLAGS)
 
 # Clean up
 clean:
-	rm -f game_menu snake_standalone pacman_standalone $(OBJS)
+	rm -f snake game_menu *.o
 
 .PHONY: all clean
