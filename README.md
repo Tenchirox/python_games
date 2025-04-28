@@ -12,6 +12,7 @@ This repository contains a collection of classic arcade games implemented in Pyt
 - **Brick Breaker**: Break all the bricks with a bouncing ball
 - **Solitaire**: Classic card game of patience and strategy
 - **Micro Machines**: Race tiny cars around various tracks
+- **Tic-Tac-Toe**: Classic game of X's and O's on a 3x3 grid (also known as Morpion)
 
 ## Requirements
 
@@ -82,6 +83,7 @@ The games will automatically generate sprites if needed, but you can also place 
 - Created pacman2.py to match the reference in game_menu.py
 - Fixed various minor bugs and improved code organization
 - Added C implementation of Snake game for performance comparison
+- Added Tic-Tac-Toe (Morpion) to the game menu
 
 ## License
 
