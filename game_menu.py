@@ -97,6 +97,13 @@ class GameMenu:
                 "module": "micromachines",
                 "class": "Car",  # This might need adjustment based on the actual class name
                 "thumbnail": self.create_micromachines_thumbnail()
+            },
+            {
+                "name": "Tic-Tac-Toe",
+                "description": "Classic game of X's and O's on a 3x3 grid",
+                "module": "morpion",
+                "class": "MorpionGame",
+                "thumbnail": self.create_tictactoe_thumbnail()
             }
         ]
         
@@ -511,6 +518,55 @@ class GameMenu:
         
         # Draw title
         draw.text((size//2, 15), "MICRO MACHINES", fill="white", anchor="mt")
+        
+        return ImageTk.PhotoImage(img)
+    
+    def create_tictactoe_thumbnail(self):
+        # Create a thumbnail for Tic-Tac-Toe (Morpion)
+        size = 150
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 255))
+        draw = ImageDraw.Draw(img)
+        
+        # Draw background
+        draw.rectangle([0, 0, size, size], fill="#3F3F3F")
+        
+        # Draw the grid
+        line_color = "#FFFFFF"
+        line_width = 3
+        
+        # Vertical lines
+        draw.line([(size/3, 30), (size/3, size-30)], fill=line_color, width=line_width)
+        draw.line([(2*size/3, 30), (2*size/3, size-30)], fill=line_color, width=line_width)
+        
+        # Horizontal lines
+        draw.line([(30, size/3), (size-30, size/3)], fill=line_color, width=line_width)
+        draw.line([(30, 2*size/3), (size-30, 2*size/3)], fill=line_color, width=line_width)
+        
+        # Draw some X's and O's
+        cell_size = size/3
+        
+        # Draw an X
+        x_color = "#FF6B6B"
+        x_width = 4
+        # Top-left cell
+        draw.line([(15, 15), (cell_size-15, cell_size-15)], fill=x_color, width=x_width)
+        draw.line([(cell_size-15, 15), (15, cell_size-15)], fill=x_color, width=x_width)
+        
+        # Middle cell
+        draw.line([(cell_size+15, cell_size+15), (2*cell_size-15, 2*cell_size-15)], fill=x_color, width=x_width)
+        draw.line([(2*cell_size-15, cell_size+15), (cell_size+15, 2*cell_size-15)], fill=x_color, width=x_width)
+        
+        # Draw an O
+        o_color = "#4ECDC4"
+        o_width = 4
+        # Top-right cell
+        draw.ellipse([(2*cell_size+15, 15), (size-15, cell_size-15)], outline=o_color, width=o_width)
+        
+        # Bottom-left cell
+        draw.ellipse([(15, 2*cell_size+15), (cell_size-15, size-15)], outline=o_color, width=o_width)
+        
+        # Draw title
+        draw.text((size//2, 15), "TIC-TAC-TOE", fill="white", anchor="mt")
         
         return ImageTk.PhotoImage(img)
     
