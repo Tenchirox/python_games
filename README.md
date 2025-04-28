@@ -1,6 +1,6 @@
-# Python Games Collection
+# Python Games Converted to C
 
-This repository contains a collection of classic arcade games implemented in Python using Tkinter for the GUI.
+This repository contains classic arcade games implemented in C using SDL2. The games were originally written in Python using Tkinter and have been converted to C for better performance and portability.
 
 ## Games Included
 
@@ -12,78 +12,79 @@ This repository contains a collection of classic arcade games implemented in Pyt
 - **Brick Breaker**: Break all the bricks with a bouncing ball
 - **Solitaire**: Classic card game of patience and strategy
 - **Micro Machines**: Race tiny cars around various tracks
-- **Tic-Tac-Toe**: Classic game of X's and O's on a 3x3 grid (also known as Morpion)
+- **Tic-Tac-Toe**: Classic game of X's and O's on a 3x3 grid
 
 ## Requirements
 
-- Python 3.x
-- Pillow (PIL Fork) for image processing
+- C compiler (gcc recommended)
+- SDL2 library
 
-Install the required packages:
+## Installation
+
+### Linux
 
 ```bash
-pip install pillow
+# Install SDL2
+sudo apt-get install libsdl2-dev
+
+# Clone the repository
+git clone https://github.com/Tenchirox/python_games.git
+cd python_games
+
+# Compile the games
+make
 ```
+
+### macOS
+
+```bash
+# Install SDL2 using Homebrew
+brew install sdl2
+
+# Clone the repository
+git clone https://github.com/Tenchirox/python_games.git
+cd python_games
+
+# Compile the games
+make
+```
+
+### Windows
+
+1. Install MinGW or another C compiler
+2. Download and install SDL2 development libraries for MinGW
+3. Clone the repository
+4. Compile using the Makefile or manually with gcc
 
 ## Running the Games
 
-You can run the game menu to select any game:
+You can run the game menu to select a game:
 
 ```bash
-python game_menu.py
+./game_menu
 ```
 
 Or run individual games directly:
 
 ```bash
-python snake.py
-python pacman.py
-python tetris.py
-# etc.
+./snake
 ```
 
-## C Implementation
+## Controls
 
-A C version of the Snake game is also included for performance comparison. This version runs in the terminal and uses ASCII characters for display.
+### Snake
+- Arrow keys to change direction
+- Enter to start the game
+- R to restart after game over
+- Escape to quit
 
-### Compiling the C Version
+## Implementation Details
 
-```bash
-make
-```
+The games use SDL2 for graphics and input handling. Each game is implemented as a standalone C file that can be compiled and run independently. The game menu provides a unified interface to launch any of the games.
 
-### Running the C Version
+## Original Python Implementation
 
-```bash
-./snake_c
-```
-
-Or use the make target:
-
-```bash
-make run_snake
-```
-
-### Controls for C Version
-
-- Arrow keys or WASD to move the snake
-- Q to quit the game
-
-## Game Controls
-
-Most games use arrow keys for movement and spacebar for actions. See the in-game instructions for specific controls.
-
-## Sprites
-
-The games will automatically generate sprites if needed, but you can also place custom sprites in the `sprites` directory to customize the appearance of the games.
-
-## Fixed Issues
-
-- Fixed toggle_pause method in pacman.py that was incorrectly placed outside the class
-- Created pacman2.py to match the reference in game_menu.py
-- Fixed various minor bugs and improved code organization
-- Added C implementation of Snake game for performance comparison
-- Added Tic-Tac-Toe (Morpion) to the game menu
+The original Python implementations using Tkinter are still available in the repository with `.py` extensions. The C versions aim to maintain the same gameplay while improving performance.
 
 ## License
 
