@@ -1,35 +1,31 @@
+/**
+ * Snake Game in C
+ * Converted from Python Tkinter version
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-#ifdef _WIN32
-#include <conio.h>
-#include <windows.h>
-#else
 #include <termios.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
-#endif
 
 // Game constants
-#define WIDTH 30
-#define HEIGHT 20
-#define INITIAL_SNAKE_LENGTH 3
+#define WIDTH 20
+#define HEIGHT 15
+#define EMPTY ' '
+#define SNAKE_BODY 'o'
+#define SNAKE_HEAD '@'
+#define FOOD '*'
+#define WALL '#'
+#define GAME_SPEED 150000 // microseconds
 
 // Direction constants
 #define UP 0
 #define RIGHT 1
 #define DOWN 2
 #define LEFT 3
-
-// Game elements
-#define EMPTY ' '
-#define SNAKE_BODY 'o'
-#define SNAKE_HEAD '@'
-#define FOOD '*'
-#define WALL '#'
 
 // Game state
 typedef struct {
@@ -38,374 +34,327 @@ typedef struct {
 } Point;
 
 typedef struct {
-    Point positions[WIDTH * HEIGHT]; // Maximum possible size
+    Point positions[WIDTH * HEIGHT]; // Maximum possible snake length
     int length;
     int direction;
+    int next_direction;
 } Snake;
+
+typedef struct {
+    Point position;
+} Food;
 
 typedef struct {
     char grid[HEIGHT][WIDTH];
     Snake snake;
-    Point food;
+    Food food;
     int score;
-    bool game_over;
+    int game_over;
 } GameState;
 
 // Function prototypes
-void initGame(GameState *game);
-void drawGame(GameState *game);
-void updateGame(GameState *game);
-void placeFood(GameState *game);
-bool isCollision(GameState *game, int x, int y);
-void changeDirection(GameState *game, int new_direction);
-int getInput();
-void setupTerminal();
-void resetTerminal();
-void clearScreen();
-void gotoxy(int x, int y);
+void initialize_game(GameState *game);
+void draw_game(GameState *game);
+void place_food(GameState *game);
+int kbhit();
+int getch_nonblock();
+void update_direction(GameState *game, int key);
+void move_snake(GameState *game);
+void update_game(GameState *game);
 
-#ifndef _WIN32
-// Global to store original terminal settings
-struct termios orig_termios;
-
-// Non-blocking input for Unix-like systems
+// Non-blocking keyboard input functions
 int kbhit() {
-    struct termios term;
-    tcgetattr(0, &term);
-
-    struct termios term2 = term;
-    term2.c_lflag &= ~ICANON;
-    term2.c_lflag &= ~ECHO;
-    term2.c_cc[VMIN] = 0;
-    term2.c_cc[VTIME] = 0;
-    tcsetattr(0, TCSANOW, &term2);
-
-    int byteswaiting;
-    ioctl(0, FIONREAD, &byteswaiting);
-
-    tcsetattr(0, TCSANOW, &term);
-    return byteswaiting;
-}
-
-int getch() {
+    struct termios oldt, newt;
     int ch;
-    struct termios term;
-    tcgetattr(0, &term);
-
-    struct termios term2 = term;
-    term2.c_lflag &= ~ICANON;
-    term2.c_lflag &= ~ECHO;
-    term2.c_cc[VMIN] = 1;
-    term2.c_cc[VTIME] = 0;
-    tcsetattr(0, TCSANOW, &term2);
-
+    int oldf;
+    
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+    
     ch = getchar();
-
-    tcsetattr(0, TCSANOW, &term);
-    return ch;
-}
-#endif
-
-void setupTerminal() {
-#ifndef _WIN32
-    // Save current terminal settings
-    tcgetattr(STDIN_FILENO, &orig_termios);
     
-    // Set terminal to raw mode
-    struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-#endif
-}
-
-void resetTerminal() {
-#ifndef _WIN32
-    // Restore original terminal settings
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
-#endif
-}
-
-void clearScreen() {
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
-}
-
-void gotoxy(int x, int y) {
-#ifdef _WIN32
-    COORD coord;
-    coord.X = x;
-    coord.Y = y;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-#else
-    printf("\033[%d;%dH", y + 1, x + 1);
-#endif
-}
-
-void initGame(GameState *game) {
-    // Initialize game state
-    game->score = 0;
-    game->game_over = false;
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
     
-    // Initialize grid
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            if (x == 0 || x == WIDTH - 1 || y == 0 || y == HEIGHT - 1) {
-                game->grid[y][x] = WALL;
-            } else {
-                game->grid[y][x] = EMPTY;
-            }
+    if(ch != EOF) {
+        ungetc(ch, stdin);
+        return 1;
+    }
+    
+    return 0;
+}
+
+int getch_nonblock() {
+    if (kbhit()) {
+        return getchar();
+    }
+    return -1;
+}
+
+// Initialize the game state
+void initialize_game(GameState *game) {
+    int i, j;
+    
+    // Clear the grid
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            game->grid[i][j] = EMPTY;
         }
     }
     
-    // Initialize snake in the middle of the grid
-    game->snake.length = INITIAL_SNAKE_LENGTH;
+    // Initialize snake
+    game->snake.length = 3;
     game->snake.direction = RIGHT;
+    game->snake.next_direction = RIGHT;
     
-    int middle_x = WIDTH / 2;
-    int middle_y = HEIGHT / 2;
+    // Place snake in the middle
+    int center_x = WIDTH / 2;
+    int center_y = HEIGHT / 2;
     
-    for (int i = 0; i < game->snake.length; i++) {
-        game->snake.positions[i].x = middle_x - i;
-        game->snake.positions[i].y = middle_y;
+    for (i = 0; i < game->snake.length; i++) {
+        game->snake.positions[i].x = center_x - i;
+        game->snake.positions[i].y = center_y;
     }
+    
+    // Initialize score and game state
+    game->score = 0;
+    game->game_over = 0;
     
     // Place initial food
-    placeFood(game);
+    place_food(game);
 }
 
-void drawGame(GameState *game) {
-    clearScreen();
+// Place food at a random empty position
+void place_food(GameState *game) {
+    int x, y;
+    int is_valid;
     
-    // Update grid with current game state
-    // First clear the grid (except walls)
-    for (int y = 1; y < HEIGHT - 1; y++) {
-        for (int x = 1; x < WIDTH - 1; x++) {
-            game->grid[y][x] = EMPTY;
+    // Seed the random number generator
+    srand(time(NULL));
+    
+    do {
+        is_valid = 1;
+        x = rand() % WIDTH;
+        y = rand() % HEIGHT;
+        
+        // Check if position is occupied by snake
+        for (int i = 0; i < game->snake.length; i++) {
+            if (game->snake.positions[i].x == x && game->snake.positions[i].y == y) {
+                is_valid = 0;
+                break;
+            }
+        }
+    } while (!is_valid);
+    
+    game->food.position.x = x;
+    game->food.position.y = y;
+}
+
+// Draw the current game state
+void draw_game(GameState *game) {
+    int i, j;
+    
+    // Clear the screen
+    system("clear"); // Use "cls" for Windows
+    
+    // Draw top border
+    printf("+");
+    for (j = 0; j < WIDTH; j++) {
+        printf("-");
+    }
+    printf("+\n");
+    
+    // Update grid with current snake and food positions
+    // Clear the grid first
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            game->grid[i][j] = EMPTY;
         }
     }
     
+    // Place food on grid
+    game->grid[game->food.position.y][game->food.position.x] = FOOD;
+    
     // Place snake on grid
-    for (int i = 0; i < game->snake.length; i++) {
+    for (i = 0; i < game->snake.length; i++) {
         int x = game->snake.positions[i].x;
         int y = game->snake.positions[i].y;
         
+        // Check if position is valid
         if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
             game->grid[y][x] = (i == 0) ? SNAKE_HEAD : SNAKE_BODY;
         }
     }
     
-    // Place food on grid
-    game->grid[game->food.y][game->food.x] = FOOD;
-    
-    // Draw the grid
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            printf("%c", game->grid[y][x]);
+    // Draw grid
+    for (i = 0; i < HEIGHT; i++) {
+        printf("|");
+        for (j = 0; j < WIDTH; j++) {
+            printf("%c", game->grid[i][j]);
         }
-        printf("\n");
+        printf("|\n");
     }
+    
+    // Draw bottom border
+    printf("+");
+    for (j = 0; j < WIDTH; j++) {
+        printf("-");
+    }
+    printf("+\n");
     
     // Display score
-    printf("\nScore: %d\n", game->score);
-    printf("Controls: WASD or Arrow Keys to move, Q to quit\n");
+    printf("Score: %d\n", game->score);
+    printf("Controls: W (up), A (left), S (down), D (right), Q (quit)\n");
 }
 
-void placeFood(GameState *game) {
-    int x, y;
-    bool valid_position;
-    
-    do {
-        valid_position = true;
-        x = rand() % (WIDTH - 2) + 1;  // Avoid walls
-        y = rand() % (HEIGHT - 2) + 1; // Avoid walls
-        
-        // Check if position is occupied by snake
-        for (int i = 0; i < game->snake.length; i++) {
-            if (game->snake.positions[i].x == x && game->snake.positions[i].y == y) {
-                valid_position = false;
-                break;
+// Update snake direction based on key input
+void update_direction(GameState *game, int key) {
+    switch (key) {
+        case 'w': case 'W':
+            if (game->snake.direction != DOWN) {
+                game->snake.next_direction = UP;
             }
-        }
-    } while (!valid_position);
-    
-    game->food.x = x;
-    game->food.y = y;
+            break;
+        case 'd': case 'D':
+            if (game->snake.direction != LEFT) {
+                game->snake.next_direction = RIGHT;
+            }
+            break;
+        case 's': case 'S':
+            if (game->snake.direction != UP) {
+                game->snake.next_direction = DOWN;
+            }
+            break;
+        case 'a': case 'A':
+            if (game->snake.direction != RIGHT) {
+                game->snake.next_direction = LEFT;
+            }
+            break;
+        case 'q': case 'Q':
+            game->game_over = 1;
+            break;
+    }
 }
 
-bool isCollision(GameState *game, int x, int y) {
-    // Check wall collision
-    if (x == 0 || x == WIDTH - 1 || y == 0 || y == HEIGHT - 1) {
-        return true;
-    }
+// Move the snake
+void move_snake(GameState *game) {
+    int i;
+    Point new_head;
     
-    // Check self collision (skip the head)
-    for (int i = 1; i < game->snake.length; i++) {
-        if (game->snake.positions[i].x == x && game->snake.positions[i].y == y) {
-            return true;
-        }
-    }
+    // Update direction
+    game->snake.direction = game->snake.next_direction;
     
-    return false;
-}
-
-void updateGame(GameState *game) {
-    // Calculate new head position based on current direction
-    int new_x = game->snake.positions[0].x;
-    int new_y = game->snake.positions[0].y;
+    // Get current head position
+    Point head = game->snake.positions[0];
     
+    // Calculate new head position based on direction
     switch (game->snake.direction) {
         case UP:
-            new_y--;
+            new_head.x = head.x;
+            new_head.y = head.y - 1;
             break;
         case RIGHT:
-            new_x++;
+            new_head.x = head.x + 1;
+            new_head.y = head.y;
             break;
         case DOWN:
-            new_y++;
+            new_head.x = head.x;
+            new_head.y = head.y + 1;
             break;
         case LEFT:
-            new_x--;
+            new_head.x = head.x - 1;
+            new_head.y = head.y;
             break;
     }
     
-    // Check for collisions
-    if (isCollision(game, new_x, new_y)) {
-        game->game_over = true;
+    // Check for collision with walls
+    if (new_head.x < 0 || new_head.x >= WIDTH || new_head.y < 0 || new_head.y >= HEIGHT) {
+        game->game_over = 1;
+        printf("\nGame Over! You hit a wall.\n");
         return;
     }
     
-    // Check if food is eaten
-    bool ate_food = (new_x == game->food.x && new_y == game->food.y);
+    // Check for collision with self
+    for (i = 0; i < game->snake.length; i++) {
+        if (new_head.x == game->snake.positions[i].x && new_head.y == game->snake.positions[i].y) {
+            game->game_over = 1;
+            printf("\nGame Over! You hit yourself.\n");
+            return;
+        }
+    }
     
-    // Move snake (shift all positions)
-    for (int i = game->snake.length - 1; i > 0; i--) {
-        game->snake.positions[i] = game->snake.positions[i - 1];
+    // Check if snake ate food
+    if (new_head.x == game->food.position.x && new_head.y == game->food.position.y) {
+        // Increase score
+        game->score += 10;
+        
+        // Increase snake length
+        game->snake.length++;
+        
+        // Place new food
+        place_food(game);
+    } else {
+        // Move the rest of the snake body
+        for (i = game->snake.length - 1; i > 0; i--) {
+            game->snake.positions[i] = game->snake.positions[i - 1];
+        }
     }
     
     // Update head position
-    game->snake.positions[0].x = new_x;
-    game->snake.positions[0].y = new_y;
-    
-    // Handle food consumption
-    if (ate_food) {
-        game->score += 10;
-        game->snake.length++;
-        
-        // Copy the last segment to extend the snake
-        game->snake.positions[game->snake.length - 1] = game->snake.positions[game->snake.length - 2];
-        
-        // Place new food
-        placeFood(game);
-    }
+    game->snake.positions[0] = new_head;
 }
 
-void changeDirection(GameState *game, int new_direction) {
-    // Prevent 180-degree turns
-    if ((new_direction == UP && game->snake.direction == DOWN) ||
-        (new_direction == DOWN && game->snake.direction == UP) ||
-        (new_direction == LEFT && game->snake.direction == RIGHT) ||
-        (new_direction == RIGHT && game->snake.direction == LEFT)) {
-        return;
+// Update game state
+void update_game(GameState *game) {
+    // Process keyboard input
+    int key = getch_nonblock();
+    if (key != -1) {
+        update_direction(game, key);
     }
     
-    game->snake.direction = new_direction;
-}
-
-int getInput() {
-#ifdef _WIN32
-    if (_kbhit()) {
-        int ch = _getch();
-        
-        if (ch == 224) { // Arrow key prefix
-            ch = _getch();
-            switch (ch) {
-                case 72: return UP;    // Up arrow
-                case 80: return DOWN;  // Down arrow
-                case 75: return LEFT;  // Left arrow
-                case 77: return RIGHT; // Right arrow
-            }
-        } else {
-            switch (ch) {
-                case 'w': case 'W': return UP;
-                case 's': case 'S': return DOWN;
-                case 'a': case 'A': return LEFT;
-                case 'd': case 'D': return RIGHT;
-                case 'q': case 'Q': return -1; // Quit
-            }
-        }
-    }
-#else
-    if (kbhit()) {
-        int ch = getch();
-        
-        if (ch == 27) { // ESC key (arrow key prefix)
-            if (getch() == 91) { // '[' character
-                switch (getch()) {
-                    case 65: return UP;    // Up arrow
-                    case 66: return DOWN;  // Down arrow
-                    case 68: return LEFT;  // Left arrow
-                    case 67: return RIGHT; // Right arrow
-                }
-            }
-        } else {
-            switch (ch) {
-                case 'w': case 'W': return UP;
-                case 's': case 'S': return DOWN;
-                case 'a': case 'A': return LEFT;
-                case 'd': case 'D': return RIGHT;
-                case 'q': case 'Q': return -1; // Quit
-            }
-        }
-    }
-#endif
-    return -2; // No input
-}
-
-int main() {
-    // Seed random number generator
-    srand(time(NULL));
+    // Move snake
+    move_snake(game);
     
-    // Set up terminal
-    setupTerminal();
+    // Draw updated game state
+    draw_game(game);
+}
+
+// Main snake game function
+void launch_snake() {
+    GameState game;
+    struct termios old_term, new_term;
+    
+    // Set up terminal for non-canonical mode
+    tcgetattr(STDIN_FILENO, &old_term);
+    new_term = old_term;
+    new_term.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
     
     // Initialize game
-    GameState game;
-    initGame(&game);
+    initialize_game(&game);
     
     // Game loop
     while (!game.game_over) {
-        // Draw current game state
-        drawGame(&game);
-        
-        // Process input
-        int input = getInput();
-        if (input == -1) { // Quit
-            break;
-        } else if (input >= 0) { // Direction change
-            changeDirection(&game, input);
-        }
-        
-        // Update game state
-        updateGame(&game);
-        
-        // Sleep to control game speed
-        usleep(150000); // 150ms delay
+        update_game(&game);
+        usleep(GAME_SPEED); // Sleep to control game speed
     }
     
-    // Game over
-    clearScreen();
-    printf("Game Over!\n");
-    printf("Final Score: %d\n", game.score);
-    printf("Press any key to exit...\n");
+    // Restore terminal settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
     
-    // Wait for key press
-    getchar();
-    
-    // Reset terminal
-    resetTerminal();
-    
+    printf("\nFinal Score: %d\n", game.score);
+    printf("Press Enter to return to menu...");
+    getchar(); // Wait for Enter key
+}
+
+// Standalone main function for testing
+#ifdef SNAKE_STANDALONE
+int main() {
+    launch_snake();
     return 0;
 }
+#endif
