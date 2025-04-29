@@ -39,5 +39,15 @@ target_link_libraries(space_invaders
     ${SDL2_MIXER_LIBRARIES}
 )
 
+# Connect Four game
+add_executable(connect_four connect_four.c)
+target_link_libraries(connect_four
+    common_framework
+    ${SDL2_LIBRARIES}
+    ${SDL2_IMAGE_LIBRARIES}
+    ${SDL2_TTF_LIBRARIES}
+    ${SDL2_MIXER_LIBRARIES}
+)
+
 # Installation rules
-install(TARGETS snake tetris pacman space_invaders DESTINATION bin)
+install(TARGETS snake tetris pacman space_invaders connect_four DESTINATION bin)

@@ -10,7 +10,7 @@
 #define BUTTON_WIDTH 200
 #define BUTTON_HEIGHT 50
 #define BUTTON_PADDING 20
-#define NUM_GAMES 4
+#define NUM_GAMES 5  // Updated to include Connect Four
 
 typedef struct {
     char* title;
@@ -107,8 +107,8 @@ int main(int argc, char* argv[]) {
 
 void initButtons(GameButton* buttons, int numButtons) {
     // Define game titles and executables
-    const char* titles[NUM_GAMES] = {"Snake", "Tetris", "Pacman", "Space Invaders"};
-    const char* executables[NUM_GAMES] = {"snake", "tetris", "pacman", "space_invaders"};
+    const char* titles[NUM_GAMES] = {"Snake", "Tetris", "Pacman", "Space Invaders", "Connect Four"};
+    const char* executables[NUM_GAMES] = {"snake", "tetris", "pacman", "space_invaders", "connect_four"};
     
     // Calculate button positions
     int startY = WINDOW_HEIGHT / 2 - ((BUTTON_HEIGHT + BUTTON_PADDING) * numButtons) / 2;
