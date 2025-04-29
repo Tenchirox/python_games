@@ -49,5 +49,15 @@ target_link_libraries(connect_four
     ${SDL2_MIXER_LIBRARIES}
 )
 
+# Tic-tac-toe game
+add_executable(tic_tac_toe tic_tac_toe.c)
+target_link_libraries(tic_tac_toe
+    common_framework
+    ${SDL2_LIBRARIES}
+    ${SDL2_IMAGE_LIBRARIES}
+    ${SDL2_TTF_LIBRARIES}
+    ${SDL2_MIXER_LIBRARIES}
+)
+
 # Installation rules
-install(TARGETS snake tetris pacman space_invaders connect_four DESTINATION bin)
+install(TARGETS snake tetris pacman space_invaders connect_four tic_tac_toe DESTINATION bin)
